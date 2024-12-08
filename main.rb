@@ -8,10 +8,11 @@ module Modes
   Rgb        = 0b1000
 end
 
-WIDTH = 900 
+WIDTH = 400 
 HEIGHT = WIDTH 
-DIVISION_SCALE = 2 / ((WIDTH-1)/2.0)
-MAX_ITERATIONS = 100 
+ZOOM_FACTOR = 0.75 # 75%
+DIVISION_SCALE = (2 - (2*ZOOM_FACTOR)) / ((WIDTH-1)/2.0)
+MAX_ITERATIONS = 50 
 RGB_ITERATIONS_RATIO = 255.0 / MAX_ITERATIONS
 
 Pixel = Struct.new(
@@ -80,7 +81,8 @@ class Mandelbrot < Gosu::Window
   end
 
   def julia(x, y)
-    c0 = Complex(-0.8, 0.156)
+    #c0 = Complex(-0.8, 0.156)
+    c0 = Complex(-0.4, 0.6)
     c  = Complex(x,y)
 
     MAX_ITERATIONS.times do |i|
@@ -156,6 +158,6 @@ class Mandelbrot < Gosu::Window
 
 end
 
-m = Mandelbrot.new(Modes::Mandelbrot | Modes::Hsv)
+m = Mandelbrot.new(Modes::Mandelbrot | Modes::Rgb)
 m.precompute
 m.show
