@@ -1,7 +1,14 @@
 require "gosu"
 require "complex"
 
-WIDTH = 500 
+module Modes 
+  Julia      = 0b0001
+  Mandelbrot = 0b0010
+  Hsv        = 0b0100
+  Rgb        = 0b1000
+end
+
+WIDTH = 900 
 HEIGHT = WIDTH 
 DIVISION_SCALE = 2 / ((WIDTH-1)/2.0)
 MAX_ITERATIONS = 100 
@@ -14,9 +21,10 @@ Pixel = Struct.new(
 
 class Mandelbrot < Gosu::Window
 
-  def initialize
+  def initialize(mode)
     super WIDTH, HEIGHT
     self.caption = "mandelbrot test"
+    @mode = mode
     @pixels = []
   end
 
@@ -62,6 +70,7 @@ class Mandelbrot < Gosu::Window
   end
 
   def compute_color(alpha, iteration)
+    #return COLOR_PALETTE[iteration]
     color = alpha << 24
     r = (RGB_ITERATIONS_RATIO * iteration).to_i << 16
     g = (RGB_ITERATIONS_RATIO * iteration).to_i << 8 
@@ -70,16 +79,44 @@ class Mandelbrot < Gosu::Window
     return color
   end
 
+  def julia(x, y)
+    c0 = Complex(-0.8, 0.156)
+    c  = Complex(x,y)
+
+    MAX_ITERATIONS.times do |i|
+      if(c.abs > 2) 
+        # outside of the julia set
+        if (@mode & Modes::Hsv) == Modes::Hsv
+          return Gosu::Color.from_hsv((360.0 / MAX_ITERATIONS) * i, 
+                                      (1.0 / MAX_ITERATIONS) * i, 
+                                      (1.0 / MAX_ITERATIONS) * i)
+        else 
+          color = compute_color(0xff, i)
+          return Gosu::Color.argb(color)
+        end
+      else
+        c = c**2 + c0
+      end
+    end
+    return Gosu::Color.argb(0x00_000000)
+  end
+
   def mandelbrot(x,y)
-    c0 = Complex(x,y)
+    c0 = Complex(x, y) 
     # we start from zero
-    c = 0
+    c = 0 
 
     MAX_ITERATIONS.times do |i|
       if(c.abs > 2) 
         # outside of the mandelbrot set
-        color = compute_color(0xff, i)
-        return Gosu::Color.argb(color)
+        if (@mode & Modes::Hsv) == Modes::Hsv
+          return Gosu::Color.from_hsv((360.0 / MAX_ITERATIONS) * i, 
+                                      (1.0 / MAX_ITERATIONS) * i, 
+                                      (1.0 / MAX_ITERATIONS) * i)
+        else 
+          color = compute_color(0xff, i)
+          return Gosu::Color.argb(color)
+        end
       else
         c = c**2 + c0
       end
@@ -90,10 +127,19 @@ class Mandelbrot < Gosu::Window
   def precompute()
     cx = (WIDTH - 1) / 2.0
     cy = (HEIGHT - 1) / 2.0
-    HEIGHT.times do |y|
-      WIDTH.times do |x|
-        x_transposed, y_transposed = transpose(x, y, cx, cy) 
-        @pixels << Pixel.new(x, y, mandelbrot(x_transposed, y_transposed))
+    if (@mode & Modes::Mandelbrot) == Modes::Mandelbrot
+      HEIGHT.times do |y|
+        WIDTH.times do |x|
+          x_transposed, y_transposed = transpose(x, y, cx, cy) 
+          @pixels << Pixel.new(x, y, mandelbrot(x_transposed, y_transposed))
+        end
+      end
+    else
+      HEIGHT.times do |y|
+        WIDTH.times do |x|
+          x_transposed, y_transposed = transpose(x, y, cx, cy) 
+          @pixels << Pixel.new(x, y, julia(x_transposed, y_transposed))
+        end
       end
     end
   end
@@ -110,6 +156,6 @@ class Mandelbrot < Gosu::Window
 
 end
 
-m = Mandelbrot.new
+m = Mandelbrot.new(Modes::Mandelbrot | Modes::Hsv)
 m.precompute
 m.show
